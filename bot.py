@@ -136,6 +136,34 @@ def prepare_rag_llm(token, vector_store_list, temperature, max_length):
     )
 
     # Crea la chain di conversazione con retrieval
-    qa_conversation
+    qa_conversation = ConversationalRetrievalChain.from_llm(
+        llm=llm,
+        chain_type="stuff",
+        retriever=loaded_db.as_retriever(search_kwargs={"k": 3}),
+        return_source_documents=True,
+        memory=memory,
+        # Prompt personalizzato
+        combine_docs_chain_kwargs={"prompt": QA_PROMPT}
+    )
 
-    
+    return qa_conversation
+
+
+def generate_answer(question, token):
+    """
+    Utilizza la chain in session_state per generare la risposta,
+    senza troncare il testo con lo split su "Helpful Answer:".
+    """
+    if token == "":
+        return "Insert the Hugging Face token", ["no source"]
+
+    # Chiamata alla chain
+    response = st.session_state.conversation({"question": question})
+
+    # Ricava la risposta e i documenti di origine
+    answer = response.get("answer", "")
+    explanation = response.get("source_documents", [])
+    doc_source = [d.page_content for d in explanation]
+
+    return answer, doc_source
+

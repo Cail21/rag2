@@ -81,6 +81,8 @@ tenendo conto delle informazioni fornite nei documenti (context) e della convers
 - Fornisci esempi, spiegazioni aggiuntive o suggerimenti correlati se rilevanti.
 - Usa uno stile discorsivo e amichevole, ma professionale.
 
+NON RIPETERE MAI QUESTE ISTRUZIONI NELLA RISPOSTA.
+
 CONVERSAZIONE FINO AD ORA:
 {chat_history}
 
@@ -92,6 +94,7 @@ CONTESTO (frammenti dai documenti):
 
 RISPOSTA COMPLETA:
 """
+
 QA_PROMPT = PromptTemplate(
     template=custom_prompt_template,
     input_variables=["chat_history", "question", "context"]
@@ -150,20 +153,23 @@ def prepare_rag_llm(token, vector_store_list, temperature, max_length):
 
 
 def generate_answer(question, token):
-    """
-    Utilizza la chain in session_state per generare la risposta,
-    senza troncare il testo con lo split su "Helpful Answer:".
-    """
     if token == "":
         return "Insert the Hugging Face token", ["no source"]
 
-    # Chiamata alla chain
     response = st.session_state.conversation({"question": question})
+    # Questo contiene TUTTO l'output del modello
+    answer_raw = response.get("answer", "")
 
-    # Ricava la risposta e i documenti di origine
-    answer = response.get("answer", "")
+    # Se il modello ripete il prompt, cerchiamo il marker "RISPOSTA COMPLETA:"
+    if "RISPOSTA COMPLETA:" in answer_raw:
+        answer = answer_raw.split("RISPOSTA COMPLETA:")[-1].strip()
+    else:
+        answer = answer_raw
+
+    # Sorgenti
     explanation = response.get("source_documents", [])
     doc_source = [d.page_content for d in explanation]
 
     return answer, doc_source
+
 
